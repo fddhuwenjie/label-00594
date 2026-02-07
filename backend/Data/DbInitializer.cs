@@ -266,11 +266,63 @@ public static class DbInitializer
             UpdatedAt = now.AddDays(-6)
         };
 
+        // ========== 场景13: 经理提交的大额申请 - 直接从财务审批开始 ==========
+        var req13_manager_submit = new PurchaseRequest
+        {
+            Id = Guid.Parse("aaaa0013-0000-0000-0000-000000000013"),
+            RequestNumber = "PR20240013",
+            ApplicantId = lisi.Id,  // 经理李四提交
+            ItemName = "部门团建活动",
+            Quantity = 1,
+            UnitPrice = 15000,
+            Reason = "研发部年度团建活动经费",
+            Urgency = Urgency.Normal,
+            Status = RequestStatus.ManagerApproved,  // 经理提交>5000，跳过经理审批，从财务开始
+            CurrentApprovalLevel = 2,
+            CreatedAt = now.AddDays(-2),
+            UpdatedAt = now.AddDays(-2)
+        };
+
+        // ========== 场景14: 财务提交的大额申请 - 直接从总经理审批开始 ==========
+        var req14_finance_submit = new PurchaseRequest
+        {
+            Id = Guid.Parse("aaaa0014-0000-0000-0000-000000000014"),
+            RequestNumber = "PR20240014",
+            ApplicantId = wangwu.Id,  // 财务王五提交
+            ItemName = "财务系统升级",
+            Quantity = 1,
+            UnitPrice = 50000,
+            Reason = "财务管理系统需要升级到新版本",
+            Urgency = Urgency.Urgent,
+            Status = RequestStatus.FinanceApproved,  // 财务提交>20000，跳过财务审批，从总经理开始
+            CurrentApprovalLevel = 3,
+            CreatedAt = now.AddDays(-1),
+            UpdatedAt = now.AddDays(-1)
+        };
+
+        // ========== 场景15: 总经理提交的申请 - 直接通过(本月) ==========
+        var req15_director_submit = new PurchaseRequest
+        {
+            Id = Guid.Parse("aaaa0015-0000-0000-0000-000000000015"),
+            RequestNumber = "PR20240015",
+            ApplicantId = zhaoliu.Id,  // 总经理赵六提交
+            ItemName = "公司战略咨询",
+            Quantity = 1,
+            UnitPrice = 100000,
+            Reason = "聘请外部顾问进行战略规划咨询",
+            Urgency = Urgency.Normal,
+            Status = RequestStatus.Approved,  // 总经理提交直接通过
+            CurrentApprovalLevel = 3,
+            CreatedAt = now.AddDays(-3),
+            UpdatedAt = now.AddDays(-3)  // 本月通过
+        };
+
         context.PurchaseRequests.AddRange(
             req1_draft, req2_pending_small, req3_pending_medium, req4_pending_large,
             req5_manager_approved, req6_finance_approved,
             req7_approved_small, req8_approved_medium, req9_approved_large,
-            req10_rejected, req11_returned, req12_cancelled
+            req10_rejected, req11_returned, req12_cancelled,
+            req13_manager_submit, req14_finance_submit, req15_director_submit
         );
         context.SaveChanges();
 
@@ -526,6 +578,42 @@ public static class DbInitializer
                 RequestId = req7_approved_small.Id,
                 IsRead = true,
                 CreatedAt = now.AddDays(-9)
+            },
+
+            // 经理提交的申请通知 - 给财务
+            new Notification
+            {
+                Id = Guid.NewGuid(),
+                UserId = wangwu.Id,
+                Title = "新的待审批申请",
+                Content = "李四（部门经理）提交了采购申请 [PR20240013] 部门团建活动，金额 ¥15,000，请审批",
+                RequestId = req13_manager_submit.Id,
+                IsRead = false,
+                CreatedAt = now.AddDays(-2)
+            },
+
+            // 财务提交的申请通知 - 给总经理
+            new Notification
+            {
+                Id = Guid.NewGuid(),
+                UserId = zhaoliu.Id,
+                Title = "紧急待审批申请",
+                Content = "王五（财务总监）提交了紧急采购申请 [PR20240014] 财务系统升级，金额 ¥50,000，请审批",
+                RequestId = req14_finance_submit.Id,
+                IsRead = false,
+                CreatedAt = now.AddDays(-1)
+            },
+
+            // 总经理提交直接通过的通知
+            new Notification
+            {
+                Id = Guid.NewGuid(),
+                UserId = zhaoliu.Id,
+                Title = "采购申请已通过",
+                Content = "您的采购申请 [PR20240015] 公司战略咨询 已自动通过（总经理权限）",
+                RequestId = req15_director_submit.Id,
+                IsRead = true,
+                CreatedAt = now.AddDays(-3)
             }
         };
 
@@ -534,8 +622,8 @@ public static class DbInitializer
 
         Console.WriteLine("✅ 数据库初始化完成：");
         Console.WriteLine("   - 5 个测试用户");
-        Console.WriteLine("   - 12 个采购申请（覆盖所有状态）");
+        Console.WriteLine("   - 15 个采购申请（覆盖所有状态和角色场景）");
         Console.WriteLine("   - 11 条审批记录");
-        Console.WriteLine("   - 12 条系统通知");
+        Console.WriteLine("   - 16 条系统通知");
     }
 }

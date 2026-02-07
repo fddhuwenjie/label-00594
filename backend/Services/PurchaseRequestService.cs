@@ -100,11 +100,26 @@ public class PurchaseRequestService : IPurchaseRequestService
             throw new InvalidOperationException("只有草稿或已退回的申请可以提交");
         }
 
-        // 计算总金额并确定审批级别
+        // 计算总金额
         var totalAmount = request.Quantity * request.UnitPrice;
-        request.Status = RequestStatus.Pending;
-        request.CurrentApprovalLevel = 1;
+        
+        // 直接查询申请人角色，确保获取正确的角色信息
+        var applicant = await _context.Users.FindAsync(request.ApplicantId);
+        var applicantRole = applicant?.Role ?? UserRole.Employee;
+        
+        // 根据申请人角色和金额确定审批起始级别
+        var (startStatus, startLevel) = DetermineApprovalStart(applicantRole, totalAmount);
+        
+        request.Status = startStatus;
+        request.CurrentApprovalLevel = startLevel;
         request.UpdatedAt = DateTime.UtcNow;
+
+        // 如果直接通过，无需启动工作流
+        if (startStatus == RequestStatus.Approved)
+        {
+            await _context.SaveChangesAsync();
+            return true;
+        }
 
         // 启动工作流
         var workflowData = new PurchaseWorkflowData
@@ -122,6 +137,49 @@ public class PurchaseRequestService : IPurchaseRequestService
         await _context.SaveChangesAsync();
 
         return true;
+    }
+
+    /// <summary>
+    /// 根据申请人角色和金额确定审批起始状态和级别
+    /// 规则：
+    /// - 员工：任何金额从 Level 1 开始（经理审批）
+    /// - 经理：≤5000 直接通过；>5000 从 Level 2 开始（财务审批）
+    /// - 财务：≤20000 直接通过；>20000 从 Level 3 开始（总经理审批）
+    /// - 总经理：任何金额直接通过
+    /// - 管理员：视同员工
+    /// </summary>
+    private (RequestStatus status, int level) DetermineApprovalStart(UserRole role, decimal totalAmount)
+    {
+        switch (role)
+        {
+            case UserRole.Director: // 总经理
+                // 总经理提交的申请直接通过
+                return (RequestStatus.Approved, 3);
+
+            case UserRole.Finance: // 财务总监
+                if (totalAmount <= 20000)
+                {
+                    // 财务提交≤20000直接通过
+                    return (RequestStatus.Approved, 2);
+                }
+                // 财务提交>20000需要总经理审批
+                return (RequestStatus.FinanceApproved, 3);
+
+            case UserRole.Manager: // 部门经理
+                if (totalAmount <= 5000)
+                {
+                    // 经理提交≤5000直接通过
+                    return (RequestStatus.Approved, 1);
+                }
+                // 经理提交>5000需要财务审批
+                return (RequestStatus.ManagerApproved, 2);
+
+            case UserRole.Employee: // 普通员工
+            case UserRole.Admin: // 管理员视同员工
+            default:
+                // 员工提交从经理开始审批
+                return (RequestStatus.Pending, 1);
+        }
     }
 
     public async Task<bool> CancelAsync(Guid id)

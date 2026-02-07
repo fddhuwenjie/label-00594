@@ -151,8 +151,12 @@ export default function NotificationPage() {
                   <Button 
                     type="link" 
                     icon={<EyeOutlined />}
-                    onClick={(e) => {
+                    onClick={async (e) => {
                       e.stopPropagation()
+                      // 点击查看时也标记为已读
+                      if (!item.isRead) {
+                        await handleMarkAsRead(item.id)
+                      }
                       navigate(`/requests/${item.requestId}`)
                     }}
                   >
