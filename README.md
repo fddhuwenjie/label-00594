@@ -5,13 +5,30 @@
 ## 🚀 快速启动
 
 ```bash
-docker compose up --build
+docker compose up -d
 ```
 
-启动完成后访问：
-- **前端界面**: http://localhost:3000
-- **后端 API**: http://localhost:5001
-- **API 文档**: http://localhost:5001/swagger
+### 启动成功标志
+
+后端启动成功后，日志会显示：
+
+```
+╔═══════════════════════════════════════════════════════════╗
+║          采购审批管理系统 - Backend API                    ║
+╠═══════════════════════════════════════════════════════════╣
+║  ✅ Startup Success                                        ║
+║  🌐 API: http://localhost:5000                             ║
+║  📚 Swagger: http://localhost:5000/swagger                 ║
+╚═══════════════════════════════════════════════════════════╝
+```
+
+### 访问地址
+
+| 服务 | 地址 |
+|------|------|
+| **前端界面** | http://localhost:3000 |
+| **后端 API** | http://localhost:5001 |
+| **API 文档** | http://localhost:5001/swagger |
 
 ## 📋 功能特性
 
@@ -44,7 +61,7 @@ docker compose up --build
 
 ### 后端
 - ASP.NET Core 8
-- WorkflowCore 3.9 (工作流引擎)
+- WorkflowCore 3.10 (工作流引擎)
 - Entity Framework Core 8
 - PostgreSQL 16
 
@@ -52,6 +69,7 @@ docker compose up --build
 - React 18
 - TypeScript 5
 - Ant Design 5
+- @ant-design/charts (数据可视化)
 - Vite 5
 - Zustand (状态管理)
 
@@ -81,7 +99,8 @@ docker compose up --build
 ├── docs/                  # 项目文档
 │   ├── Requirements.md   # 需求规格
 │   ├── Roadmap.md        # 开发路线图
-│   └── DesignSpec.md     # 设计规范
+│   ├── DesignSpec.md     # 设计规范
+│   └── SelfTestReport.md # 自测报告
 └── docker-compose.yml    # Docker 编排
 ```
 
@@ -103,7 +122,7 @@ npm run dev
 
 ## 📄 API 文档
 
-启动后访问 Swagger UI: http://localhost:5000/swagger
+启动后访问 Swagger UI: http://localhost:5001/swagger
 
 主要接口：
 - `POST /api/auth/login` - 用户登录
