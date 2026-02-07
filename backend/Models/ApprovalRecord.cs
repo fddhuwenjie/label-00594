@@ -1,0 +1,41 @@
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace PurchaseApproval.Models;
+
+/// <summary>
+/// 审批记录实体
+/// </summary>
+public class ApprovalRecord
+{
+    [Key]
+    public Guid Id { get; set; }
+
+    /// <summary>采购申请ID</summary>
+    [Required]
+    public Guid RequestId { get; set; }
+
+    /// <summary>审批人ID</summary>
+    [Required]
+    public Guid ApproverId { get; set; }
+
+    /// <summary>审批操作</summary>
+    [Required]
+    public ApprovalAction Action { get; set; }
+
+    /// <summary>审批意见</summary>
+    [MaxLength(500)]
+    public string Comment { get; set; } = string.Empty;
+
+    /// <summary>审批级别 (1=经理, 2=财务, 3=总经理)</summary>
+    public int ApprovalLevel { get; set; }
+
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    // Navigation properties
+    [ForeignKey(nameof(RequestId))]
+    public virtual PurchaseRequest? Request { get; set; }
+
+    [ForeignKey(nameof(ApproverId))]
+    public virtual User? Approver { get; set; }
+}
