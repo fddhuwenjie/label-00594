@@ -120,20 +120,6 @@ export default function LoginPage() {
             登 录
           </Button>
 
-          <div style={{ 
-            padding: 16, 
-            background: '#F0F2F5', 
-            borderRadius: 8,
-            fontSize: 12,
-            color: '#8C8C8C'
-          }}>
-            <div style={{ marginBottom: 8, color: '#595959', fontWeight: 500 }}>测试账号说明：</div>
-            <div>• 张三 - 普通员工，可创建申请</div>
-            <div>• 李四 - 部门经理，审批≤5000元申请</div>
-            <div>• 王五 - 财务总监，审批≤20000元申请</div>
-            <div>• 赵六 - 总经理，审批所有申请</div>
-            <div>• admin - 系统管理员</div>
-          </div>
         </Space>
       </Card>
     </div>
