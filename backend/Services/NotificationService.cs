@@ -16,7 +16,7 @@ public class NotificationService : INotificationService
     public async Task<List<Notification>> GetByUserIdAsync(Guid userId, bool? unreadOnly = null)
     {
         var query = _context.Notifications.Where(n => n.UserId == userId);
-        
+
         if (unreadOnly == true)
         {
             query = query.Where(n => !n.IsRead);
@@ -30,10 +30,15 @@ public class NotificationService : INotificationService
         return await _context.Notifications.CountAsync(n => n.UserId == userId && !n.IsRead);
     }
 
-    public async Task<bool> MarkAsReadAsync(Guid notificationId)
+    public async Task<bool> MarkAsReadAsync(Guid notificationId, Guid userId)
     {
-        var notification = await _context.Notifications.FindAsync(notificationId);
-        if (notification == null) return false;
+        var notification = await _context.Notifications
+            .FirstOrDefaultAsync(n => n.Id == notificationId && n.UserId == userId);
+
+        if (notification == null)
+        {
+            return false;
+        }
 
         notification.IsRead = true;
         await _context.SaveChangesAsync();
@@ -46,9 +51,9 @@ public class NotificationService : INotificationService
             .Where(n => n.UserId == userId && !n.IsRead)
             .ToListAsync();
 
-        foreach (var n in notifications)
+        foreach (var notification in notifications)
         {
-            n.IsRead = true;
+            notification.IsRead = true;
         }
 
         await _context.SaveChangesAsync();
@@ -89,7 +94,7 @@ public class NotificationService : INotificationService
     public async Task NotifyPendingApprovalAsync(PurchaseRequest request, UserRole targetRole)
     {
         var approvers = await _context.Users.Where(u => u.Role == targetRole).ToListAsync();
-        
+
         var title = "新的待审批申请";
         var content = $"有一笔新的采购申请 [{request.RequestNumber}] {request.ItemName} 等待您审批";
 

@@ -25,12 +25,20 @@ public class UserService : IUserService
 
     public async Task<User?> GetByUsernameAsync(string username)
     {
-        return await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
+        var normalizedUsername = username.Trim();
+        return await _context.Users.FirstOrDefaultAsync(u => u.Username == normalizedUsername);
     }
 
     public async Task<User?> LoginAsync(string username, string password)
     {
-        return await _context.Users.FirstOrDefaultAsync(u => u.Username == username && u.Password == password);
+        var normalizedUsername = username.Trim();
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == normalizedUsername);
+        if (user == null)
+        {
+            return null;
+        }
+
+        return BCrypt.Net.BCrypt.Verify(password, user.Password) ? user : null;
     }
 
     public async Task<List<User>> GetApproversByRoleAsync(UserRole role)

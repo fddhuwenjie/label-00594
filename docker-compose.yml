@@ -1,50 +1,55 @@
 services:
-  # PostgreSQL Database
   db:
     image: postgres:16-alpine
     container_name: purchase-approval-db
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres123
-      POSTGRES_DB: purchase_approval
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      TZ: ${TZ:-Asia/Shanghai}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5
     networks:
       - purchase-network
 
-  # ASP.NET Core Backend API
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: purchase-approval-api
     environment:
-      - ASPNETCORE_ENVIRONMENT=Production
-      - ASPNETCORE_URLS=http://+:5000
-      - ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=purchase_approval;Username=postgres;Password=postgres123
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      ASPNETCORE_URLS: http://+:${API_INTERNAL_PORT:-5000}
+      TZ: ${TZ:-Asia/Shanghai}
+      ConnectionStrings__DefaultConnection: Host=${POSTGRES_HOST:-db};Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      Jwt__Issuer: ${JWT_ISSUER}
+      Jwt__Audience: ${JWT_AUDIENCE}
+      Jwt__SecretKey: ${JWT_SECRET_KEY}
+      SEED_USER_PASSWORD: ${SEED_USER_PASSWORD}
     ports:
-      - "5001:5000"
+      - "${API_EXTERNAL_PORT:-5001}:${API_INTERNAL_PORT:-5000}"
     depends_on:
       db:
         condition: service_healthy
     networks:
       - purchase-network
 
-  # React Frontend
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: purchase-approval-web
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
     ports:
-      - "3000:80"
+      - "${FRONTEND_EXTERNAL_PORT:-3000}:80"
     depends_on:
       - backend
     networks:

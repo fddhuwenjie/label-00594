@@ -1,10 +1,13 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using PurchaseApproval.Extensions;
 using PurchaseApproval.Services;
 
 namespace PurchaseApproval.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class NotificationsController : ControllerBase
 {
     private readonly INotificationService _notificationService;
@@ -14,18 +17,16 @@ public class NotificationsController : ControllerBase
         _notificationService = notificationService;
     }
 
-    /// <summary>
-    /// 获取通知列表
-    /// </summary>
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromHeader(Name = "X-User-Id")] Guid userId, [FromQuery] bool? unreadOnly)
+    public async Task<IActionResult> GetAll([FromQuery] bool? unreadOnly)
     {
-        if (userId == Guid.Empty)
+        var userId = User.GetUserId();
+        if (!userId.HasValue)
         {
-            return BadRequest(new { message = "请先登录" });
+            return Unauthorized(new { message = "认证信息无效" });
         }
 
-        var notifications = await _notificationService.GetByUserIdAsync(userId, unreadOnly);
+        var notifications = await _notificationService.GetByUserIdAsync(userId.Value, unreadOnly);
         return Ok(notifications.Select(n => new
         {
             id = n.Id,
@@ -37,47 +38,47 @@ public class NotificationsController : ControllerBase
         }));
     }
 
-    /// <summary>
-    /// 获取未读数量
-    /// </summary>
     [HttpGet("unread-count")]
-    public async Task<IActionResult> GetUnreadCount([FromHeader(Name = "X-User-Id")] Guid userId)
+    public async Task<IActionResult> GetUnreadCount()
     {
-        if (userId == Guid.Empty)
+        var userId = User.GetUserId();
+        if (!userId.HasValue)
         {
-            return BadRequest(new { message = "请先登录" });
+            return Unauthorized(new { message = "认证信息无效" });
         }
 
-        var count = await _notificationService.GetUnreadCountAsync(userId);
+        var count = await _notificationService.GetUnreadCountAsync(userId.Value);
         return Ok(new { count });
     }
 
-    /// <summary>
-    /// 标记为已读
-    /// </summary>
     [HttpPut("{id}/read")]
     public async Task<IActionResult> MarkAsRead(Guid id)
     {
-        var result = await _notificationService.MarkAsReadAsync(id);
+        var userId = User.GetUserId();
+        if (!userId.HasValue)
+        {
+            return Unauthorized(new { message = "认证信息无效" });
+        }
+
+        var result = await _notificationService.MarkAsReadAsync(id, userId.Value);
         if (!result)
         {
             return NotFound(new { message = "通知不存在" });
         }
+
         return Ok(new { message = "已标记为已读" });
     }
 
-    /// <summary>
-    /// 全部标记为已读
-    /// </summary>
     [HttpPut("read-all")]
-    public async Task<IActionResult> MarkAllAsRead([FromHeader(Name = "X-User-Id")] Guid userId)
+    public async Task<IActionResult> MarkAllAsRead()
     {
-        if (userId == Guid.Empty)
+        var userId = User.GetUserId();
+        if (!userId.HasValue)
         {
-            return BadRequest(new { message = "请先登录" });
+            return Unauthorized(new { message = "认证信息无效" });
         }
 
-        await _notificationService.MarkAllAsReadAsync(userId);
+        await _notificationService.MarkAllAsReadAsync(userId.Value);
         return Ok(new { message = "已全部标记为已读" });
     }
 }

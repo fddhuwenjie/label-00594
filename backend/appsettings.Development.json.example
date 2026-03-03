@@ -1,0 +1,11 @@
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=localhost;Port=5432;Database=purchase_approval;Username=postgres;Password=your-db-password"
+  },
+  "Jwt": {
+    "Issuer": "PurchaseApproval",
+    "Audience": "PurchaseApprovalClient",
+    "SecretKey": "your-very-strong-jwt-secret-key-at-least-32-characters",
+    "ExpirationMinutes": 120
+  }
+}

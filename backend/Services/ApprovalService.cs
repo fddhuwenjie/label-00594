@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using PurchaseApproval.Data;
 using PurchaseApproval.Models;
+using PurchaseApproval.Utils;
 using PurchaseApproval.Workflows;
 using WorkflowCore.Interface;
 
@@ -11,50 +12,55 @@ public class ApprovalService : IApprovalService
     private readonly AppDbContext _context;
     private readonly IWorkflowHost _workflowHost;
     private readonly INotificationService _notificationService;
+    private readonly IAuditLogService _auditLogService;
+    private readonly ILogger<ApprovalService> _logger;
 
     public ApprovalService(
-        AppDbContext context, 
+        AppDbContext context,
         IWorkflowHost workflowHost,
-        INotificationService notificationService)
+        INotificationService notificationService,
+        IAuditLogService auditLogService,
+        ILogger<ApprovalService> logger)
     {
         _context = context;
         _workflowHost = workflowHost;
         _notificationService = notificationService;
+        _auditLogService = auditLogService;
+        _logger = logger;
     }
 
     public async Task<List<PurchaseRequest>> GetPendingApprovalsAsync(Guid approverId)
     {
         var approver = await _context.Users.FindAsync(approverId);
-        if (approver == null) return new List<PurchaseRequest>();
+        if (approver == null)
+        {
+            return new List<PurchaseRequest>();
+        }
 
         var query = _context.PurchaseRequests
             .Include(r => r.Applicant)
             .AsQueryable();
 
-        // 根据审批人角色筛选待审批的申请
         switch (approver.Role)
         {
             case UserRole.Manager:
-                // 部门经理：审批 Pending 状态 (Level 1)
-                query = query.Where(r => 
-                    r.Status == RequestStatus.Pending && 
+                query = query.Where(r =>
+                    r.Status == RequestStatus.Pending &&
                     r.CurrentApprovalLevel == 1);
                 break;
-                
+
             case UserRole.Finance:
-                // 财务总监：审批 ManagerApproved 状态 (Level 2)
-                query = query.Where(r => 
-                    r.Status == RequestStatus.ManagerApproved && 
+                query = query.Where(r =>
+                    r.Status == RequestStatus.ManagerApproved &&
                     r.CurrentApprovalLevel == 2);
                 break;
-                
+
             case UserRole.Director:
-                // 总经理：审批 FinanceApproved 状态 (Level 3)
-                query = query.Where(r => 
-                    r.Status == RequestStatus.FinanceApproved && 
+                query = query.Where(r =>
+                    r.Status == RequestStatus.FinanceApproved &&
                     r.CurrentApprovalLevel == 3);
                 break;
-                
+
             default:
                 return new List<PurchaseRequest>();
         }
@@ -66,36 +72,48 @@ public class ApprovalService : IApprovalService
     {
         var request = await _context.PurchaseRequests.FindAsync(requestId);
         var approver = await _context.Users.FindAsync(approverId);
-        
-        if (request == null || approver == null) return false;
 
-        // 验证审批权限
-        if (!CanApprove(request, approver)) return false;
+        if (request == null || approver == null)
+        {
+            return false;
+        }
 
-        // 记录审批
+        if (!CanApprove(request, approver))
+        {
+            await _auditLogService.LogAsync(
+                action: "Approval.Approve",
+                resourceType: "PurchaseRequest",
+                resourceId: requestId.ToString(),
+                result: "Forbidden",
+                details: "审批人权限不足或申请状态不匹配",
+                actorId: approverId,
+                actorUsername: approver.Username,
+                actorRole: approver.Role.ToString());
+            return false;
+        }
+
         var record = new ApprovalRecord
         {
             Id = Guid.NewGuid(),
             RequestId = requestId,
             ApproverId = approverId,
             Action = ApprovalAction.Approve,
-            Comment = comment ?? string.Empty,
-            ApprovalLevel = request.CurrentApprovalLevel
+            Comment = comment?.Trim() ?? string.Empty,
+            ApprovalLevel = request.CurrentApprovalLevel,
+            CreatedAt = DateTimeHelper.GetBeijingTime()
         };
         _context.ApprovalRecords.Add(record);
 
-        // 计算总金额确定下一步
         var totalAmount = request.Quantity * request.UnitPrice;
         var nextStatus = DetermineNextStatus(request.Status, totalAmount);
         var nextLevel = DetermineNextLevel(request.CurrentApprovalLevel, totalAmount);
 
         request.Status = nextStatus;
         request.CurrentApprovalLevel = nextLevel;
-        request.UpdatedAt = DateTime.UtcNow;
+        request.UpdatedAt = DateTimeHelper.GetBeijingTime();
 
         await _context.SaveChangesAsync();
 
-        // 发布工作流事件
         if (!string.IsNullOrEmpty(request.WorkflowId))
         {
             await _workflowHost.PublishEvent(
@@ -105,8 +123,24 @@ public class ApprovalService : IApprovalService
             );
         }
 
-        // 发送通知
         await _notificationService.NotifyApprovalResultAsync(request, ApprovalAction.Approve, approver.DisplayName);
+
+        await _auditLogService.LogAsync(
+            action: "Approval.Approve",
+            resourceType: "PurchaseRequest",
+            resourceId: requestId.ToString(),
+            result: "Success",
+            details: $"nextStatus={nextStatus};nextLevel={nextLevel}",
+            actorId: approverId,
+            actorUsername: approver.Username,
+            actorRole: approver.Role.ToString());
+
+        _logger.LogInformation(
+            "审批通过: requestId={RequestId}, approverId={ApproverId}, nextStatus={NextStatus}, nextLevel={NextLevel}",
+            requestId,
+            approverId,
+            nextStatus,
+            nextLevel);
 
         return true;
     }
@@ -115,9 +149,25 @@ public class ApprovalService : IApprovalService
     {
         var request = await _context.PurchaseRequests.FindAsync(requestId);
         var approver = await _context.Users.FindAsync(approverId);
-        
-        if (request == null || approver == null) return false;
-        if (!CanApprove(request, approver)) return false;
+
+        if (request == null || approver == null)
+        {
+            return false;
+        }
+
+        if (!CanApprove(request, approver))
+        {
+            await _auditLogService.LogAsync(
+                action: "Approval.Reject",
+                resourceType: "PurchaseRequest",
+                resourceId: requestId.ToString(),
+                result: "Forbidden",
+                details: "审批人权限不足或申请状态不匹配",
+                actorId: approverId,
+                actorUsername: approver.Username,
+                actorRole: approver.Role.ToString());
+            return false;
+        }
 
         var record = new ApprovalRecord
         {
@@ -125,13 +175,14 @@ public class ApprovalService : IApprovalService
             RequestId = requestId,
             ApproverId = approverId,
             Action = ApprovalAction.Reject,
-            Comment = comment ?? string.Empty,
-            ApprovalLevel = request.CurrentApprovalLevel
+            Comment = comment?.Trim() ?? string.Empty,
+            ApprovalLevel = request.CurrentApprovalLevel,
+            CreatedAt = DateTimeHelper.GetBeijingTime()
         };
         _context.ApprovalRecords.Add(record);
 
         request.Status = RequestStatus.Rejected;
-        request.UpdatedAt = DateTime.UtcNow;
+        request.UpdatedAt = DateTimeHelper.GetBeijingTime();
 
         await _context.SaveChangesAsync();
 
@@ -146,6 +197,21 @@ public class ApprovalService : IApprovalService
 
         await _notificationService.NotifyApprovalResultAsync(request, ApprovalAction.Reject, approver.DisplayName);
 
+        await _auditLogService.LogAsync(
+            action: "Approval.Reject",
+            resourceType: "PurchaseRequest",
+            resourceId: requestId.ToString(),
+            result: "Success",
+            details: $"status={request.Status}",
+            actorId: approverId,
+            actorUsername: approver.Username,
+            actorRole: approver.Role.ToString());
+
+        _logger.LogInformation(
+            "审批拒绝: requestId={RequestId}, approverId={ApproverId}",
+            requestId,
+            approverId);
+
         return true;
     }
 
@@ -153,9 +219,25 @@ public class ApprovalService : IApprovalService
     {
         var request = await _context.PurchaseRequests.FindAsync(requestId);
         var approver = await _context.Users.FindAsync(approverId);
-        
-        if (request == null || approver == null) return false;
-        if (!CanApprove(request, approver)) return false;
+
+        if (request == null || approver == null)
+        {
+            return false;
+        }
+
+        if (!CanApprove(request, approver))
+        {
+            await _auditLogService.LogAsync(
+                action: "Approval.Return",
+                resourceType: "PurchaseRequest",
+                resourceId: requestId.ToString(),
+                result: "Forbidden",
+                details: "审批人权限不足或申请状态不匹配",
+                actorId: approverId,
+                actorUsername: approver.Username,
+                actorRole: approver.Role.ToString());
+            return false;
+        }
 
         var record = new ApprovalRecord
         {
@@ -163,14 +245,15 @@ public class ApprovalService : IApprovalService
             RequestId = requestId,
             ApproverId = approverId,
             Action = ApprovalAction.Return,
-            Comment = comment ?? string.Empty,
-            ApprovalLevel = request.CurrentApprovalLevel
+            Comment = comment?.Trim() ?? string.Empty,
+            ApprovalLevel = request.CurrentApprovalLevel,
+            CreatedAt = DateTimeHelper.GetBeijingTime()
         };
         _context.ApprovalRecords.Add(record);
 
         request.Status = RequestStatus.Returned;
         request.CurrentApprovalLevel = 0;
-        request.UpdatedAt = DateTime.UtcNow;
+        request.UpdatedAt = DateTimeHelper.GetBeijingTime();
 
         await _context.SaveChangesAsync();
 
@@ -185,11 +268,52 @@ public class ApprovalService : IApprovalService
 
         await _notificationService.NotifyApprovalResultAsync(request, ApprovalAction.Return, approver.DisplayName);
 
+        await _auditLogService.LogAsync(
+            action: "Approval.Return",
+            resourceType: "PurchaseRequest",
+            resourceId: requestId.ToString(),
+            result: "Success",
+            details: $"status={request.Status}",
+            actorId: approverId,
+            actorUsername: approver.Username,
+            actorRole: approver.Role.ToString());
+
+        _logger.LogInformation(
+            "审批退回: requestId={RequestId}, approverId={ApproverId}",
+            requestId,
+            approverId);
+
         return true;
     }
 
-    public async Task<List<ApprovalRecord>> GetApprovalHistoryAsync(Guid requestId)
+    public async Task<List<ApprovalRecord>> GetApprovalHistoryAsync(Guid requestId, Guid operatorId, UserRole operatorRole)
     {
+        var request = await _context.PurchaseRequests.FindAsync(requestId);
+        if (request == null)
+        {
+            return new List<ApprovalRecord>();
+        }
+
+        var canAccess = operatorRole == UserRole.Admin || request.ApplicantId == operatorId;
+        if (!canAccess)
+        {
+            var approver = await _context.Users.FindAsync(operatorId);
+            canAccess = approver != null && CanApprove(request, approver);
+        }
+
+        if (!canAccess)
+        {
+            await _auditLogService.LogAsync(
+                action: "Approval.History",
+                resourceType: "PurchaseRequest",
+                resourceId: requestId.ToString(),
+                result: "Forbidden",
+                details: "无权查看审批历史",
+                actorId: operatorId,
+                actorRole: operatorRole.ToString());
+            throw new UnauthorizedAccessException("无权查看该审批历史");
+        }
+
         return await _context.ApprovalRecords
             .Include(ar => ar.Approver)
             .Where(ar => ar.RequestId == requestId)
@@ -197,50 +321,36 @@ public class ApprovalService : IApprovalService
             .ToListAsync();
     }
 
-    private bool CanApprove(PurchaseRequest request, User approver)
+    private static bool CanApprove(PurchaseRequest request, User approver)
     {
         return (approver.Role == UserRole.Manager && request.Status == RequestStatus.Pending && request.CurrentApprovalLevel == 1) ||
                (approver.Role == UserRole.Finance && request.Status == RequestStatus.ManagerApproved && request.CurrentApprovalLevel == 2) ||
                (approver.Role == UserRole.Director && request.Status == RequestStatus.FinanceApproved && request.CurrentApprovalLevel == 3);
     }
 
-    private RequestStatus DetermineNextStatus(RequestStatus currentStatus, decimal totalAmount)
+    private static RequestStatus DetermineNextStatus(RequestStatus currentStatus, decimal totalAmount)
     {
-        switch (currentStatus)
+        return currentStatus switch
         {
-            case RequestStatus.Pending:
-                // 经理审批后
-                if (totalAmount <= 5000) return RequestStatus.Approved;
-                return RequestStatus.ManagerApproved;
-                
-            case RequestStatus.ManagerApproved:
-                // 财务审批后
-                if (totalAmount <= 20000) return RequestStatus.Approved;
-                return RequestStatus.FinanceApproved;
-                
-            case RequestStatus.FinanceApproved:
-                // 总经理审批后
-                return RequestStatus.Approved;
-                
-            default:
-                return currentStatus;
-        }
+            RequestStatus.Pending when totalAmount <= 5000 => RequestStatus.Approved,
+            RequestStatus.Pending => RequestStatus.ManagerApproved,
+            RequestStatus.ManagerApproved when totalAmount <= 20000 => RequestStatus.Approved,
+            RequestStatus.ManagerApproved => RequestStatus.FinanceApproved,
+            RequestStatus.FinanceApproved => RequestStatus.Approved,
+            _ => currentStatus
+        };
     }
 
-    private int DetermineNextLevel(int currentLevel, decimal totalAmount)
+    private static int DetermineNextLevel(int currentLevel, decimal totalAmount)
     {
-        switch (currentLevel)
+        return currentLevel switch
         {
-            case 1:
-                if (totalAmount <= 5000) return 1;
-                return 2;
-            case 2:
-                if (totalAmount <= 20000) return 2;
-                return 3;
-            case 3:
-                return 3;
-            default:
-                return 1;
-        }
+            1 when totalAmount <= 5000 => 1,
+            1 => 2,
+            2 when totalAmount <= 20000 => 2,
+            2 => 3,
+            3 => 3,
+            _ => 1
+        };
     }
 }

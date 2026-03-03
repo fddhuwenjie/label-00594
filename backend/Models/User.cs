@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using PurchaseApproval.Utils;
 
 namespace PurchaseApproval.Models;
 
@@ -28,7 +29,7 @@ public class User
     [MaxLength(100)]
     public string Department { get; set; } = string.Empty;
 
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAt { get; set; } = DateTimeHelper.GetBeijingTime();
 
     // Navigation properties
     public virtual ICollection<PurchaseRequest> PurchaseRequests { get; set; } = new List<PurchaseRequest>();

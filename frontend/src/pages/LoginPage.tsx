@@ -9,7 +9,7 @@ const { Title, Text } = Typography
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const { user, setUser } = useStore()
+  const { user, setSession } = useStore()
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
@@ -22,9 +22,22 @@ export default function LoginPage() {
   const handleLogin = async (values: { username: string; password: string }) => {
     setLoading(true)
     try {
-      const userData = await authApi.login(values.username.trim(), values.password)
-      setUser(userData)
-      message.success(`欢迎，${userData.displayName}！`)
+      const loginResult = await authApi.login(values.username.trim(), values.password)
+      setSession({
+        user: {
+          id: loginResult.id,
+          username: loginResult.username,
+          displayName: loginResult.displayName,
+          role: loginResult.role,
+          roleValue: loginResult.roleValue,
+          department: loginResult.department,
+          token: loginResult.token,
+          tokenType: loginResult.tokenType,
+          expiresAt: loginResult.expiresAt,
+        },
+        token: loginResult.token,
+      })
+      message.success(`欢迎，${loginResult.displayName}！`)
       navigate('/')
     } catch (error: any) {
       message.error(error.message || '登录失败')

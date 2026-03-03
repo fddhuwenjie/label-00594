@@ -1,10 +1,12 @@
+using Microsoft.EntityFrameworkCore;
 using PurchaseApproval.Models;
+using PurchaseApproval.Utils;
 
 namespace PurchaseApproval.Data;
 
 public static class DbInitializer
 {
-    public static void Initialize(AppDbContext context)
+    public static void Initialize(AppDbContext context, ILogger logger)
     {
         // 确保数据库已创建
         context.Database.EnsureCreated();
@@ -20,7 +22,7 @@ public static class DbInitializer
         {
             Id = Guid.Parse("11111111-1111-1111-1111-111111111111"),
             Username = "zhangsan",
-            Password = "123456",
+            Password = HashPassword(),
             DisplayName = "张三",
             Role = UserRole.Employee,
             Department = "研发部"
@@ -29,7 +31,7 @@ public static class DbInitializer
         {
             Id = Guid.Parse("22222222-2222-2222-2222-222222222222"),
             Username = "lisi",
-            Password = "123456",
+            Password = HashPassword(),
             DisplayName = "李四",
             Role = UserRole.Manager,
             Department = "研发部"
@@ -38,7 +40,7 @@ public static class DbInitializer
         {
             Id = Guid.Parse("33333333-3333-3333-3333-333333333333"),
             Username = "wangwu",
-            Password = "123456",
+            Password = HashPassword(),
             DisplayName = "王五",
             Role = UserRole.Finance,
             Department = "财务部"
@@ -47,7 +49,7 @@ public static class DbInitializer
         {
             Id = Guid.Parse("44444444-4444-4444-4444-444444444444"),
             Username = "zhaoliu",
-            Password = "123456",
+            Password = HashPassword(),
             DisplayName = "赵六",
             Role = UserRole.Director,
             Department = "总经办"
@@ -56,7 +58,7 @@ public static class DbInitializer
         {
             Id = Guid.Parse("55555555-5555-5555-5555-555555555555"),
             Username = "admin",
-            Password = "123456",
+            Password = HashPassword(),
             DisplayName = "系统管理员",
             Role = UserRole.Admin,
             Department = "信息部"
@@ -65,7 +67,7 @@ public static class DbInitializer
         context.Users.AddRange(zhangsan, lisi, wangwu, zhaoliu, admin);
         context.SaveChanges();
 
-        var now = DateTime.UtcNow;
+        var now = DateTimeHelper.GetBeijingTime();
 
         // ========== 场景1: 草稿状态 - 可编辑提交 ==========
         var req1_draft = new PurchaseRequest
@@ -625,10 +627,21 @@ public static class DbInitializer
         context.Notifications.AddRange(notifications);
         context.SaveChanges();
 
-        Console.WriteLine("✅ 数据库初始化完成：");
-        Console.WriteLine("   - 5 个测试用户");
-        Console.WriteLine("   - 15 个采购申请（覆盖所有状态和角色场景）");
-        Console.WriteLine("   - 11 条审批记录");
-        Console.WriteLine("   - 16 条系统通知");
+        logger.LogInformation("数据库初始化完成: users={UserCount}, requests={RequestCount}, approvalRecords={ApprovalRecordCount}, notifications={NotificationCount}",
+            context.Users.Count(),
+            context.PurchaseRequests.Count(),
+            context.ApprovalRecords.Count(),
+            context.Notifications.Count());
+    }
+
+    private static string HashPassword()
+    {
+        var seedPassword = Environment.GetEnvironmentVariable("SEED_USER_PASSWORD");
+        if (string.IsNullOrWhiteSpace(seedPassword))
+        {
+            throw new InvalidOperationException("缺少 SEED_USER_PASSWORD 环境变量，无法初始化测试用户密码");
+        }
+
+        return BCrypt.Net.BCrypt.HashPassword(seedPassword);
     }
 }

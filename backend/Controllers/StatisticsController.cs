@@ -1,10 +1,13 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using PurchaseApproval.Extensions;
 using PurchaseApproval.Services;
 
 namespace PurchaseApproval.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class StatisticsController : ControllerBase
 {
     private readonly IStatisticsService _statisticsService;
@@ -14,23 +17,21 @@ public class StatisticsController : ControllerBase
         _statisticsService = statisticsService;
     }
 
-    /// <summary>
-    /// 获取仪表盘数据
-    /// </summary>
     [HttpGet("dashboard")]
-    public async Task<IActionResult> GetDashboard([FromHeader(Name = "X-User-Id")] Guid userId)
+    public async Task<IActionResult> GetDashboard()
     {
-        if (userId == Guid.Empty)
+        var userId = User.GetUserId();
+        if (!userId.HasValue)
         {
-            return BadRequest(new { message = "请先登录" });
+            return Unauthorized(new { message = "认证信息无效" });
         }
 
         try
         {
-            var dashboard = await _statisticsService.GetDashboardAsync(userId);
+            var dashboard = await _statisticsService.GetDashboardAsync(userId.Value);
             return Ok(dashboard);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
             return BadRequest(new { message = ex.Message });
         }

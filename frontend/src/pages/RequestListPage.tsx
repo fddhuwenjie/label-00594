@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Card, Table, Button, Tag, Space, Select, Typography, message, Popconfirm } from 'antd'
+import { Card, Table, Button, Tag, Space, Select, Typography, message, Popconfirm, Tooltip } from 'antd'
 import { PlusOutlined, EyeOutlined, EditOutlined, SendOutlined, CloseCircleOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { requestsApi } from '../api'
@@ -21,7 +21,7 @@ export default function RequestListPage() {
   const fetchRequests = async () => {
     setLoading(true)
     try {
-      const data = await requestsApi.getAll({ userId: user?.id })
+      const data = await requestsApi.getAll()
       setRequests(data)
       setFilteredRequests(data)
     } catch (error: any) {
@@ -136,34 +136,42 @@ export default function RequestListPage() {
     {
       title: '操作',
       key: 'action',
-      width: 200,
+      width: 140,
+      fixed: 'right' as const,
       render: (_: any, record: PurchaseRequest) => (
-        <Space size="small">
-          <Button
-            type="link"
-            size="small"
-            icon={<EyeOutlined />}
-            onClick={() => navigate(`/requests/${record.id}`)}
-          >
-            详情
-          </Button>
+        <Space size={4}>
+          <Tooltip title="详情">
+            <Button
+              type="text"
+              size="small"
+              icon={<EyeOutlined />}
+              style={{ color: '#1677ff' }}
+              onClick={() => navigate(`/requests/${record.id}`)}
+            />
+          </Tooltip>
           {(record.statusValue === RequestStatus.Draft || record.statusValue === RequestStatus.Returned) && (
             <>
-              <Button
-                type="link"
-                size="small"
-                icon={<EditOutlined />}
-                onClick={() => navigate(`/requests/${record.id}/edit`)}
-              >
-                编辑
-              </Button>
+              <Tooltip title="编辑">
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<EditOutlined />}
+                  style={{ color: '#1677ff' }}
+                  onClick={() => navigate(`/requests/${record.id}/edit`)}
+                />
+              </Tooltip>
               <Popconfirm
                 title="确定提交申请？"
                 onConfirm={() => handleSubmit(record.id)}
               >
-                <Button type="link" size="small" icon={<SendOutlined />}>
-                  提交
-                </Button>
+                <Tooltip title="提交">
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<SendOutlined />}
+                    style={{ color: '#52c41a' }}
+                  />
+                </Tooltip>
               </Popconfirm>
             </>
           )}
@@ -174,9 +182,14 @@ export default function RequestListPage() {
               title="确定撤销申请？"
               onConfirm={() => handleCancel(record.id)}
             >
-              <Button type="link" size="small" danger icon={<CloseCircleOutlined />}>
-                撤销
-              </Button>
+              <Tooltip title="撤销">
+                <Button
+                  type="text"
+                  size="small"
+                  danger
+                  icon={<CloseCircleOutlined />}
+                />
+              </Tooltip>
             </Popconfirm>
           )}
         </Space>
@@ -221,6 +234,7 @@ export default function RequestListPage() {
           columns={columns}
           rowKey="id"
           loading={loading}
+          scroll={{ x: 1100 }}
           pagination={{
             showSizeChanger: true,
             showQuickJumper: true,

@@ -81,7 +81,10 @@ export interface User {
   role: string
   roleValue: UserRole
   department: string
-  createdAt: string
+  createdAt?: string
+  token?: string
+  tokenType?: string
+  expiresAt?: string
 }
 
 // 采购申请

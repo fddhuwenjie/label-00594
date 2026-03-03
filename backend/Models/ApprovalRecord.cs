@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using PurchaseApproval.Utils;
 
 namespace PurchaseApproval.Models;
 
@@ -30,7 +31,7 @@ public class ApprovalRecord
     /// <summary>审批级别 (1=经理, 2=财务, 3=总经理)</summary>
     public int ApprovalLevel { get; set; }
 
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAt { get; set; } = DateTimeHelper.GetBeijingTime();
 
     // Navigation properties
     [ForeignKey(nameof(RequestId))]

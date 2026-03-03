@@ -20,6 +20,10 @@
     <PackageReference Include="WorkflowCore.Persistence.EntityFramework" Version="3.9.1" />
     <PackageReference Include="WorkflowCore.Persistence.PostgreSQL" Version="3.9.1" />
     
+    <!-- Auth -->
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.10" />
+    <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+
     <!-- Swagger -->
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
   </ItemGroup>

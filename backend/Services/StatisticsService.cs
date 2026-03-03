@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using PurchaseApproval.Data;
 using PurchaseApproval.DTOs;
 using PurchaseApproval.Models;
+using PurchaseApproval.Utils;
 
 namespace PurchaseApproval.Services;
 
@@ -21,8 +22,8 @@ public class StatisticsService : IStatisticsService
         var user = await _context.Users.FindAsync(userId);
         if (user == null) throw new InvalidOperationException("用户不存在");
 
-        var now = DateTime.UtcNow;
-        var startOfMonth = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var now = DateTimeHelper.GetBeijingTime();
+        var startOfMonth = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Unspecified);
 
         // 待审批数量
         var pendingApprovals = await _approvalService.GetPendingApprovalsAsync(userId);

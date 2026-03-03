@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using PurchaseApproval.Utils;
 
 namespace PurchaseApproval.Models;
 
@@ -56,8 +57,8 @@ public class PurchaseRequest
     /// <summary>当前审批级别 (1=经理, 2=财务, 3=总经理)</summary>
     public int CurrentApprovalLevel { get; set; } = 0;
 
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAt { get; set; } = DateTimeHelper.GetBeijingTime();
+    public DateTime UpdatedAt { get; set; } = DateTimeHelper.GetBeijingTime();
 
     // Navigation properties
     [ForeignKey(nameof(ApplicantId))]

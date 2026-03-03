@@ -1,114 +1,129 @@
 # 采购审批管理系统
 
-基于 **WorkflowCore** 工作流引擎的企业级采购审批管理系统。
+基于 **WorkflowCore** 工作流引擎的采购审批管理系统，已补齐生产向关键安全基线：统一认证授权、主体校验、输入边界校验、结构化日志、请求关联 ID 与敏感操作审计。
 
 ## 🚀 快速启动
 
+### 1) 准备环境变量
+
+将项目根目录的 `.env.example` 复制为 `.env`，并填入你自己的安全配置：
+
 ```bash
-docker compose up -d
+cp .env.example .env
 ```
 
-### 启动成功标志
+必须至少配置：
 
-后端启动成功后，日志会显示：
+- `POSTGRES_PASSWORD`
+- `JWT_SECRET_KEY`（长度至少 32）
+- `SEED_USER_PASSWORD`
 
+### 2) 启动服务
+
+```bash
+docker compose up --build -d
 ```
-╔═══════════════════════════════════════════════════════════╗
-║          采购审批管理系统 - Backend API                    ║
-╠═══════════════════════════════════════════════════════════╣
-║  ✅ Startup Success                                        ║
-║  🌐 API: http://localhost:5000                             ║
-║  📚 Swagger: http://localhost:5000/swagger                 ║
-╚═══════════════════════════════════════════════════════════╝
-```
+
+## 🌐 端口与访问地址（统一口径）
+
+- 容器内部端口（Backend）：`5000`
+- 宿主机对外端口（Backend）：`5001`
 
 ### 访问地址
 
 | 服务 | 地址 |
 |------|------|
-| **前端界面** | http://localhost:3000 |
-| **后端 API** | http://localhost:5001 |
-| **API 文档** | http://localhost:5001/swagger |
+| 前端界面 | http://localhost:3000 |
+| 后端 API | http://localhost:5001 |
+| API 文档 | http://localhost:5001/swagger |
 
-## 📋 功能特性
+## 🔐 认证与鉴权说明
 
-### 核心功能
-- ✅ 采购申请全生命周期管理（创建、编辑、提交、撤回）
-- ✅ 基于 WorkflowCore 的多级审批工作流
-- ✅ 灵活的金额分级审批规则
-- ✅ 实时审批状态追踪
-- ✅ 系统内通知中心
-- ✅ 数据统计仪表盘
-
-### 审批规则
-| 金额范围 | 审批流程 |
-|---------|---------|
-| ≤ 5,000 元 | 部门经理 |
-| 5,001 ~ 20,000 元 | 部门经理 → 财务总监 |
-| > 20,000 元 | 部门经理 → 财务总监 → 总经理 |
+- 登录接口：`POST /api/auth/login`
+- 登录成功后返回 `token`（JWT Bearer）。
+- 前端自动在请求头携带 `Authorization: Bearer <token>`。
+- 业务接口默认要求已认证（401）；越权操作返回 403。
 
 ## 👥 测试账号
 
-登录方式为账号密码登录，测试环境默认密码均为 `123456`。
+系统默认会初始化以下账号（用户名固定）：
 
-| 用户名 | 密码 | 姓名 | 角色 | 权限说明 |
-|-------|------|------|------|---------|
-| zhangsan | 123456 | 张三 | 普通员工 | 创建和管理采购申请 |
-| lisi | 123456 | 李四 | 部门经理 | 审批第1级（≤5000元） |
-| wangwu | 123456 | 王五 | 财务总监 | 审批第2级（≤20000元） |
-| zhaoliu | 123456 | 赵六 | 总经理 | 审批第3级（所有金额） |
-| admin | 123456 | 系统管理员 | 管理员 | 用户管理 |
+- `zhangsan`
+- `lisi`
+- `wangwu`
+- `zhaoliu`
+- `admin`
+
+密码不再写死在代码和文档中，统一来自 `.env` 的 `SEED_USER_PASSWORD`。
+
+## 📋 功能特性
+
+- 采购申请全生命周期管理（创建、编辑、提交、撤销）
+- 基于 WorkflowCore 的多级审批流程
+- 审批规则分级（经理 / 财务 / 总经理）
+- 通知中心与仪表盘
+- 审计日志与请求关联 ID（`X-Correlation-ID`）
 
 ## 🛠️ 技术栈
 
 ### 后端
+
 - ASP.NET Core 8
-- WorkflowCore 3.10 (工作流引擎)
+- WorkflowCore 3.9
 - Entity Framework Core 8
 - PostgreSQL 16
+- JWT Bearer Authentication
 
 ### 前端
+
 - React 18
 - TypeScript 5
 - Ant Design 5
-- @ant-design/charts (数据可视化)
 - Vite 5
-- Zustand (状态管理)
+- Zustand
 
 ### 部署
+
 - Docker & Docker Compose
-- Nginx (前端代理)
+- Nginx
 
 ## 📁 项目结构
 
+```text
+├── backend/
+│   ├── Configuration/
+│   ├── Controllers/
+│   ├── Data/
+│   ├── DTOs/
+│   ├── Extensions/
+│   ├── Middleware/
+│   ├── Models/
+│   ├── Services/
+│   ├── Utils/
+│   └── Workflows/
+├── frontend/
+│   └── src/
+├── docs/
+├── .env.example
+└── docker-compose.yml
 ```
-├── backend/                # 后端项目
-│   ├── Controllers/        # API 控制器
-│   ├── Models/            # 数据模型
-│   ├── Services/          # 业务服务
-│   ├── Workflows/         # 工作流定义
-│   ├── Data/              # 数据库上下文
-│   └── DTOs/              # 数据传输对象
-├── frontend/              # 前端项目
-│   ├── src/
-│   │   ├── api/          # API 接口
-│   │   ├── pages/        # 页面组件
-│   │   ├── layouts/      # 布局组件
-│   │   ├── store/        # 状态管理
-│   │   ├── theme/        # 主题配置
-│   │   └── types/        # 类型定义
-│   └── public/           # 静态资源
-├── docs/                  # 项目文档
-│   ├── Requirements.md   # 需求规格
-│   ├── Roadmap.md        # 开发路线图
-│   ├── DesignSpec.md     # 设计规范
-│   └── SelfTestReport.md # 自测报告
-└── docker-compose.yml    # Docker 编排
-```
+
+## 📄 主要接口
+
+- `POST /api/auth/login`：用户登录并获取 JWT
+- `GET /api/requests`：获取申请列表（按当前登录用户范围）
+- `POST /api/requests`：创建申请
+- `PUT /api/requests/{id}`：更新申请（仅申请人本人/管理员）
+- `POST /api/requests/{id}/submit`：提交申请（仅申请人本人/管理员）
+- `POST /api/requests/{id}/cancel`：撤销申请（仅申请人本人/管理员）
+- `GET /api/approvals/pending`：获取待审批列表
+- `POST /api/approvals/{id}/approve`：审批通过
+- `GET /api/statistics/dashboard`：获取仪表盘
 
 ## 🔧 本地开发
 
 ### 后端
+
 ```bash
 cd backend
 dotnet restore
@@ -116,24 +131,12 @@ dotnet run
 ```
 
 ### 前端
+
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-
-## 📄 API 文档
-
-启动后访问 Swagger UI: http://localhost:5001/swagger
-
-主要接口：
-- `POST /api/auth/login` - 用户登录
-- `GET /api/requests` - 获取申请列表
-- `POST /api/requests` - 创建申请
-- `POST /api/requests/{id}/submit` - 提交申请
-- `GET /api/approvals/pending` - 获取待审批列表
-- `POST /api/approvals/{id}/approve` - 同意审批
-- `GET /api/statistics/dashboard` - 获取仪表盘数据
 
 ## 📝 License
 

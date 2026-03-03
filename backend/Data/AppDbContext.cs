@@ -13,6 +13,7 @@ public class AppDbContext : DbContext
     public DbSet<PurchaseRequest> PurchaseRequests => Set<PurchaseRequest>();
     public DbSet<ApprovalRecord> ApprovalRecords => Set<ApprovalRecord>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -46,6 +47,15 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Notification>(entity =>
         {
             entity.HasIndex(e => new { e.UserId, e.IsRead });
+        });
+
+        // AuditLog
+        modelBuilder.Entity<AuditLog>(entity =>
+        {
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => e.ActorId);
+            entity.HasIndex(e => e.Action);
+            entity.HasIndex(e => e.CorrelationId);
         });
     }
 }

@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using PurchaseApproval.Utils;
 
 namespace PurchaseApproval.Models;
 
@@ -30,7 +31,7 @@ public class Notification
     /// <summary>是否已读</summary>
     public bool IsRead { get; set; } = false;
 
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAt { get; set; } = DateTimeHelper.GetBeijingTime();
 
     // Navigation properties
     [ForeignKey(nameof(UserId))]

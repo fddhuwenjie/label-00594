@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PurchaseApproval.Services;
 
@@ -5,6 +6,7 @@ namespace PurchaseApproval.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(Roles = "Admin")]
 public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
@@ -14,9 +16,6 @@ public class UsersController : ControllerBase
         _userService = userService;
     }
 
-    /// <summary>
-    /// 获取所有用户列表
-    /// </summary>
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
@@ -33,9 +32,6 @@ public class UsersController : ControllerBase
         }));
     }
 
-    /// <summary>
-    /// 获取指定用户信息
-    /// </summary>
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id)
     {
