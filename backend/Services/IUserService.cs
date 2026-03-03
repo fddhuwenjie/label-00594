@@ -7,6 +7,6 @@ public interface IUserService
     Task<List<User>> GetAllAsync();
     Task<User?> GetByIdAsync(Guid id);
     Task<User?> GetByUsernameAsync(string username);
-    Task<User?> LoginAsync(string username);
+    Task<User?> LoginAsync(string username, string password);
     Task<List<User>> GetApproversByRoleAsync(UserRole role);
 }

@@ -28,9 +28,9 @@ public class UserService : IUserService
         return await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
     }
 
-    public async Task<User?> LoginAsync(string username)
+    public async Task<User?> LoginAsync(string username, string password)
     {
-        return await GetByUsernameAsync(username);
+        return await _context.Users.FirstOrDefaultAsync(u => u.Username == username && u.Password == password);
     }
 
     public async Task<List<User>> GetApproversByRoleAsync(UserRole role)

@@ -20,6 +20,7 @@ public static class DbInitializer
         {
             Id = Guid.Parse("11111111-1111-1111-1111-111111111111"),
             Username = "zhangsan",
+            Password = "123456",
             DisplayName = "张三",
             Role = UserRole.Employee,
             Department = "研发部"
@@ -28,6 +29,7 @@ public static class DbInitializer
         {
             Id = Guid.Parse("22222222-2222-2222-2222-222222222222"),
             Username = "lisi",
+            Password = "123456",
             DisplayName = "李四",
             Role = UserRole.Manager,
             Department = "研发部"
@@ -36,6 +38,7 @@ public static class DbInitializer
         {
             Id = Guid.Parse("33333333-3333-3333-3333-333333333333"),
             Username = "wangwu",
+            Password = "123456",
             DisplayName = "王五",
             Role = UserRole.Finance,
             Department = "财务部"
@@ -44,6 +47,7 @@ public static class DbInitializer
         {
             Id = Guid.Parse("44444444-4444-4444-4444-444444444444"),
             Username = "zhaoliu",
+            Password = "123456",
             DisplayName = "赵六",
             Role = UserRole.Director,
             Department = "总经办"
@@ -52,6 +56,7 @@ public static class DbInitializer
         {
             Id = Guid.Parse("55555555-5555-5555-5555-555555555555"),
             Username = "admin",
+            Password = "123456",
             DisplayName = "系统管理员",
             Role = UserRole.Admin,
             Department = "信息部"

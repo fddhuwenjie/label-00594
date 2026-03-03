@@ -16,15 +16,15 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// 用户登录 (简化版，基于用户名选择)
+    /// 用户登录（账号密码）
     /// </summary>
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginDto dto)
     {
-        var user = await _userService.LoginAsync(dto.Username);
+        var user = await _userService.LoginAsync(dto.Username, dto.Password);
         if (user == null)
         {
-            return NotFound(new { message = "用户不存在" });
+            return Unauthorized(new { message = "账号或密码错误" });
         }
 
         return Ok(new

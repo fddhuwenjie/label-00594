@@ -1,49 +1,28 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Card, Select, Button, Typography, Space, message } from 'antd'
-import { UserOutlined, LoginOutlined } from '@ant-design/icons'
+import { Card, Form, Input, Button, Typography, Space, message } from 'antd'
+import { UserOutlined, LockOutlined, LoginOutlined } from '@ant-design/icons'
 import { useStore } from '../store/useStore'
-import { usersApi, authApi } from '../api'
-import type { User } from '../types'
-import { UserRoleLabels } from '../types'
+import { authApi } from '../api'
 
 const { Title, Text } = Typography
 
 export default function LoginPage() {
   const navigate = useNavigate()
   const { user, setUser } = useStore()
-  const [users, setUsers] = useState<User[]>([])
-  const [selectedUser, setSelectedUser] = useState<string>('')
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     // 如果已登录，跳转到首页
     if (user) {
       navigate('/')
-      return
     }
-
-    // 获取用户列表
-    const fetchUsers = async () => {
-      try {
-        const data = await usersApi.getAll()
-        setUsers(data)
-      } catch (error) {
-        message.error('获取用户列表失败')
-      }
-    }
-    fetchUsers()
   }, [user, navigate])
 
-  const handleLogin = async () => {
-    if (!selectedUser) {
-      message.warning('请选择用户')
-      return
-    }
-
+  const handleLogin = async (values: { username: string; password: string }) => {
     setLoading(true)
     try {
-      const userData = await authApi.login(selectedUser)
+      const userData = await authApi.login(values.username.trim(), values.password)
       setUser(userData)
       message.success(`欢迎，${userData.displayName}！`)
       navigate('/')
@@ -87,38 +66,47 @@ export default function LoginPage() {
             <Title level={3} style={{ margin: 0, color: '#141414' }}>
               采购审批管理系统
             </Title>
-            <Text type="secondary">选择用户登录系统</Text>
+            <Text type="secondary">请输入账号和密码登录系统</Text>
           </div>
 
-          <Select
-            size="large"
-            placeholder="请选择用户"
-            style={{ width: '100%' }}
-            value={selectedUser || undefined}
-            onChange={setSelectedUser}
-            options={users.map(u => ({
-              value: u.username,
-              label: (
-                <Space>
-                  <span>{u.displayName}</span>
-                  <Text type="secondary" style={{ fontSize: 12 }}>
-                    {UserRoleLabels[u.roleValue]} · {u.department}
-                  </Text>
-                </Space>
-              ),
-            }))}
-          />
-
-          <Button
-            type="primary"
-            size="large"
-            block
-            icon={<LoginOutlined />}
-            loading={loading}
-            onClick={handleLogin}
-          >
-            登 录
-          </Button>
+          <Form layout="vertical" onFinish={handleLogin}>
+            <Form.Item
+              name="username"
+              label="账号"
+              rules={[{ required: true, message: '请输入账号' }]}
+            >
+              <Input
+                size="large"
+                prefix={<UserOutlined />}
+                placeholder="请输入账号"
+                autoComplete="username"
+              />
+            </Form.Item>
+            <Form.Item
+              name="password"
+              label="密码"
+              rules={[{ required: true, message: '请输入密码' }]}
+            >
+              <Input.Password
+                size="large"
+                prefix={<LockOutlined />}
+                placeholder="请输入密码"
+                autoComplete="current-password"
+              />
+            </Form.Item>
+            <Form.Item style={{ marginBottom: 0 }}>
+              <Button
+                type="primary"
+                size="large"
+                block
+                icon={<LoginOutlined />}
+                loading={loading}
+                htmlType="submit"
+              >
+                登 录
+              </Button>
+            </Form.Item>
+          </Form>
 
         </Space>
       </Card>
