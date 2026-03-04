@@ -4,7 +4,6 @@ import MainLayout from './layouts/MainLayout'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
 import RequestListPage from './pages/RequestListPage'
-import RequestFormPage from './pages/RequestFormPage'
 import RequestDetailPage from './pages/RequestDetailPage'
 import ApprovalPage from './pages/ApprovalPage'
 import NotificationPage from './pages/NotificationPage'
@@ -30,9 +29,7 @@ function App() {
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="requests" element={<RequestListPage />} />
-        <Route path="requests/new" element={<RequestFormPage />} />
         <Route path="requests/:id" element={<RequestDetailPage />} />
-        <Route path="requests/:id/edit" element={<RequestFormPage />} />
         <Route path="approvals" element={<ApprovalPage />} />
         <Route path="notifications" element={<NotificationPage />} />
         <Route path="users" element={<UserManagePage />} />

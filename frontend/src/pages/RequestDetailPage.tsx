@@ -16,6 +16,7 @@ import {
   RequestStatus, RequestStatusLabels, RequestStatusColors, 
   UrgencyLabels, ApprovalAction, ApprovalActionLabels, UserRole 
 } from '../types'
+import RequestFormModal from '../components/RequestFormModal'
 
 const { Title, Text } = Typography
 const { TextArea } = Input
@@ -30,6 +31,7 @@ export default function RequestDetailPage() {
   const [approvalAction, setApprovalAction] = useState<ApprovalAction | null>(null)
   const [comment, setComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [editModalOpen, setEditModalOpen] = useState(false)
 
   const fetchRequest = async () => {
     setLoading(true)
@@ -149,7 +151,7 @@ export default function RequestDetailPage() {
           {/* 申请人操作 */}
           {isApplicant && (request.statusValue === RequestStatus.Draft || request.statusValue === RequestStatus.Returned) && (
             <>
-              <Button icon={<EditOutlined />} onClick={() => navigate(`/requests/${id}/edit`)}>
+              <Button icon={<EditOutlined />} onClick={() => setEditModalOpen(true)}>
                 编辑
               </Button>
               <Popconfirm title="确定提交申请？" onConfirm={handleSubmit}>
@@ -282,6 +284,16 @@ export default function RequestDetailPage() {
           onChange={(e) => setComment(e.target.value)}
         />
       </Modal>
+
+      <RequestFormModal
+        open={editModalOpen}
+        editId={id ?? null}
+        onClose={() => setEditModalOpen(false)}
+        onSuccess={() => {
+          setEditModalOpen(false)
+          fetchRequest()
+        }}
+      />
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, Table, Button, Tag, Space, Select, Typography, message, Popconfirm, Tooltip } from 'antd'
 import { PlusOutlined, EyeOutlined, EditOutlined, SendOutlined, CloseCircleOutlined } from '@ant-design/icons'
@@ -7,6 +7,7 @@ import { requestsApi } from '../api'
 import { useStore } from '../store/useStore'
 import type { PurchaseRequest } from '../types'
 import { RequestStatus, RequestStatusLabels, RequestStatusColors, UrgencyLabels } from '../types'
+import RequestFormModal from '../components/RequestFormModal'
 
 const { Title } = Typography
 
@@ -18,7 +19,10 @@ export default function RequestListPage() {
   const [filteredRequests, setFilteredRequests] = useState<PurchaseRequest[]>([])
   const [statusFilter, setStatusFilter] = useState<number | undefined>(undefined)
 
-  const fetchRequests = async () => {
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editId, setEditId] = useState<string | null>(null)
+
+  const fetchRequests = useCallback(async () => {
     setLoading(true)
     try {
       const data = await requestsApi.getAll()
@@ -29,11 +33,11 @@ export default function RequestListPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     fetchRequests()
-  }, [user?.id])
+  }, [user?.id, fetchRequests])
 
   useEffect(() => {
     let filtered = [...requests]
@@ -42,6 +46,26 @@ export default function RequestListPage() {
     }
     setFilteredRequests(filtered)
   }, [statusFilter, requests])
+
+  const openCreate = () => {
+    setEditId(null)
+    setModalOpen(true)
+  }
+
+  const openEdit = (id: string) => {
+    setEditId(id)
+    setModalOpen(true)
+  }
+
+  const closeModal = () => {
+    setModalOpen(false)
+    setEditId(null)
+  }
+
+  const handleModalSuccess = () => {
+    closeModal()
+    fetchRequests()
+  }
 
   const handleSubmit = async (id: string) => {
     try {
@@ -69,7 +93,9 @@ export default function RequestListPage() {
       dataIndex: 'requestNumber',
       key: 'requestNumber',
       width: 140,
-      render: (text: string) => <a onClick={() => navigate(`/requests/${text}`)}>{text}</a>,
+      render: (text: string, record: PurchaseRequest) => (
+        <a onClick={() => navigate(`/requests/${record.id}`)}>{text}</a>
+      ),
     },
     {
       title: '物品名称',
@@ -157,7 +183,7 @@ export default function RequestListPage() {
                   size="small"
                   icon={<EditOutlined />}
                   style={{ color: '#1677ff' }}
-                  onClick={() => navigate(`/requests/${record.id}/edit`)}
+                  onClick={() => openEdit(record.id)}
                 />
               </Tooltip>
               <Popconfirm
@@ -175,7 +201,7 @@ export default function RequestListPage() {
               </Popconfirm>
             </>
           )}
-          {(record.statusValue === RequestStatus.Pending || 
+          {(record.statusValue === RequestStatus.Pending ||
             record.statusValue === RequestStatus.ManagerApproved ||
             record.statusValue === RequestStatus.FinanceApproved) && (
             <Popconfirm
@@ -201,17 +227,16 @@ export default function RequestListPage() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <Title level={4} style={{ margin: 0 }}>采购申请</Title>
-        <Button 
-          type="primary" 
+        <Button
+          type="primary"
           icon={<PlusOutlined />}
-          onClick={() => navigate('/requests/new')}
+          onClick={openCreate}
         >
           新建申请
         </Button>
       </div>
 
       <Card bordered={false} style={{ borderRadius: 8 }}>
-        {/* 筛选条件 */}
         <div style={{ marginBottom: 16 }}>
           <Space wrap>
             <Select
@@ -228,7 +253,6 @@ export default function RequestListPage() {
           </Space>
         </div>
 
-        {/* 表格 */}
         <Table
           dataSource={filteredRequests}
           columns={columns}
@@ -242,6 +266,13 @@ export default function RequestListPage() {
           }}
         />
       </Card>
+
+      <RequestFormModal
+        open={modalOpen}
+        editId={editId}
+        onClose={closeModal}
+        onSuccess={handleModalSuccess}
+      />
     </div>
   )
 }
