@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import type { User } from '../types'
+import type { User, Delegation, ActiveGrantor } from '../types'
+import { delegationsApi } from '../api'
 
 interface AppState {
   user: User | null
@@ -8,6 +9,14 @@ interface AppState {
   logout: () => void
   unreadCount: number
   setUnreadCount: (count: number) => void
+  grantedDelegations: Delegation[]
+  receivedDelegations: Delegation[]
+  activeGrantors: ActiveGrantor[]
+  delegationsLoading: boolean
+  fetchGrantedDelegations: () => Promise<void>
+  fetchReceivedDelegations: () => Promise<void>
+  fetchActiveGrantors: () => Promise<void>
+  refreshDelegations: () => Promise<void>
 }
 
 const loadUser = (): User | null => {
@@ -33,15 +42,61 @@ export const useStore = create<AppState>((set) => ({
 
     localStorage.removeItem('user')
     localStorage.removeItem('access_token')
-    set({ user: null, token: null, unreadCount: 0 })
+    set({ user: null, token: null, unreadCount: 0, grantedDelegations: [], receivedDelegations: [], activeGrantors: [] })
   },
 
   logout: () => {
     localStorage.removeItem('user')
     localStorage.removeItem('access_token')
-    set({ user: null, token: null, unreadCount: 0 })
+    set({ user: null, token: null, unreadCount: 0, grantedDelegations: [], receivedDelegations: [], activeGrantors: [] })
   },
 
   unreadCount: 0,
   setUnreadCount: (count) => set({ unreadCount: count }),
+
+  grantedDelegations: [],
+  receivedDelegations: [],
+  activeGrantors: [],
+  delegationsLoading: false,
+
+  fetchGrantedDelegations: async () => {
+    try {
+      set({ delegationsLoading: true })
+      const data = await delegationsApi.getGranted()
+      set({ grantedDelegations: data })
+    } catch (error) {
+      console.error('获取发起的委托失败', error)
+    } finally {
+      set({ delegationsLoading: false })
+    }
+  },
+
+  fetchReceivedDelegations: async () => {
+    try {
+      set({ delegationsLoading: true })
+      const data = await delegationsApi.getReceived()
+      set({ receivedDelegations: data })
+    } catch (error) {
+      console.error('获取收到的委托失败', error)
+    } finally {
+      set({ delegationsLoading: false })
+    }
+  },
+
+  fetchActiveGrantors: async () => {
+    try {
+      const data = await delegationsApi.getActiveGrantors()
+      set({ activeGrantors: data })
+    } catch (error) {
+      console.error('获取活跃委托人失败', error)
+    }
+  },
+
+  refreshDelegations: async () => {
+    await Promise.all([
+      useStore.getState().fetchGrantedDelegations(),
+      useStore.getState().fetchReceivedDelegations(),
+      useStore.getState().fetchActiveGrantors(),
+    ])
+  },
 }))

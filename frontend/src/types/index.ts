@@ -115,11 +115,57 @@ export interface ApprovalRecord {
   id: string
   approverId: string
   approverName: string
+  originalApproverId?: string
+  originalApproverName?: string
   action: string
   actionValue: ApprovalAction
   comment: string
   approvalLevel: number
   createdAt: string
+}
+
+// 审批委托
+export interface Delegation {
+  id: string
+  grantorId: string
+  grantorName: string
+  grantorRole: string
+  trusteeId: string
+  trusteeName: string
+  trusteeRole: string
+  startDate: string
+  endDate: string
+  reason: string
+  isActive: boolean
+  createdAt: string
+}
+
+// 活跃委托人信息
+export interface ActiveGrantor {
+  id: string
+  grantorId: string
+  grantorName: string
+  grantorRole: string
+  startDate: string
+  endDate: string
+  reason: string
+}
+
+// 创建委托 DTO
+export interface CreateDelegationDto {
+  trusteeId: string
+  startDate: string
+  endDate: string
+  reason?: string
+}
+
+// 更新委托 DTO
+export interface UpdateDelegationDto {
+  trusteeId: string
+  startDate: string
+  endDate: string
+  reason?: string
+  isActive: boolean
 }
 
 // 通知

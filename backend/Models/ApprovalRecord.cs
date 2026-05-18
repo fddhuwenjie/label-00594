@@ -16,9 +16,12 @@ public class ApprovalRecord
     [Required]
     public Guid RequestId { get; set; }
 
-    /// <summary>审批人ID</summary>
+    /// <summary>审批人ID（实际操作人）</summary>
     [Required]
     public Guid ApproverId { get; set; }
+
+    /// <summary>原审批人ID（如果有委托的话）</summary>
+    public Guid? OriginalApproverId { get; set; }
 
     /// <summary>审批操作</summary>
     [Required]
@@ -39,4 +42,7 @@ public class ApprovalRecord
 
     [ForeignKey(nameof(ApproverId))]
     public virtual User? Approver { get; set; }
+
+    [ForeignKey(nameof(OriginalApproverId))]
+    public virtual User? OriginalApprover { get; set; }
 }
