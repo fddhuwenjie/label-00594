@@ -73,6 +73,53 @@ export const ApprovalActionLabels: Record<ApprovalAction, string> = {
   [ApprovalAction.Return]: '退回',
 }
 
+export enum DelegationStatus {
+  Active = 0,
+  Revoked = 1,
+  Expired = 2,
+}
+
+export const DelegationStatusLabels: Record<DelegationStatus, string> = {
+  [DelegationStatus.Active]: '生效中',
+  [DelegationStatus.Revoked]: '已撤销',
+  [DelegationStatus.Expired]: '已过期',
+}
+
+export const DelegationStatusColors: Record<DelegationStatus, string> = {
+  [DelegationStatus.Active]: 'success',
+  [DelegationStatus.Revoked]: 'default',
+  [DelegationStatus.Expired]: 'warning',
+}
+
+export interface Delegation {
+  id: string
+  delegatorId: string
+  delegatorName: string
+  delegateeId: string
+  delegateeName: string
+  startDate: string
+  endDate: string
+  reason: string
+  status: string
+  statusValue: DelegationStatus
+  createdAt: string
+  updatedAt?: string
+}
+
+export interface CreateDelegationDto {
+  delegateeId: string
+  startDate: string
+  endDate: string
+  reason?: string
+}
+
+export interface ApproverOption {
+  id: string
+  displayName: string
+  role: string
+  department: string
+}
+
 // 用户
 export interface User {
   id: string
@@ -115,6 +162,8 @@ export interface ApprovalRecord {
   id: string
   approverId: string
   approverName: string
+  actualOperatorId?: string
+  actualOperatorName?: string
   action: string
   actionValue: ApprovalAction
   comment: string

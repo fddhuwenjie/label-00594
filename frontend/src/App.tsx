@@ -8,6 +8,7 @@ import RequestDetailPage from './pages/RequestDetailPage'
 import ApprovalPage from './pages/ApprovalPage'
 import NotificationPage from './pages/NotificationPage'
 import UserManagePage from './pages/UserManagePage'
+import DelegationPage from './pages/DelegationPage'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const user = useStore((state) => state.user)
@@ -31,6 +32,7 @@ function App() {
         <Route path="requests" element={<RequestListPage />} />
         <Route path="requests/:id" element={<RequestDetailPage />} />
         <Route path="approvals" element={<ApprovalPage />} />
+        <Route path="delegations" element={<DelegationPage />} />
         <Route path="notifications" element={<NotificationPage />} />
         <Route path="users" element={<UserManagePage />} />
       </Route>

@@ -231,6 +231,11 @@ export default function RequestDetailPage() {
                   <div>
                     <div style={{ fontWeight: 500 }}>
                       {record.approverName}
+                      {record.actualOperatorName && record.actualOperatorName !== record.approverName && (
+                        <Text type="secondary" style={{ fontWeight: 400, fontSize: 12, marginLeft: 4 }}>
+                          （由 {record.actualOperatorName} 代为审批）
+                        </Text>
+                      )}
                       <Tag 
                         color={record.actionValue === ApprovalAction.Approve ? 'success' : 
                                record.actionValue === ApprovalAction.Reject ? 'error' : 'warning'}
