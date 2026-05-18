@@ -123,6 +123,7 @@ builder.Services.AddScoped<IPurchaseRequestService, PurchaseRequestService>();
 builder.Services.AddScoped<IApprovalService, ApprovalService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IStatisticsService, StatisticsService>();
+builder.Services.AddScoped<IDelegationService, DelegationService>();
 
 // Controllers
 builder.Services.AddControllers();

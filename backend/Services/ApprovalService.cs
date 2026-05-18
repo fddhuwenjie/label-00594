@@ -13,6 +13,7 @@ public class ApprovalService : IApprovalService
     private readonly IWorkflowHost _workflowHost;
     private readonly INotificationService _notificationService;
     private readonly IAuditLogService _auditLogService;
+    private readonly IDelegationService _delegationService;
     private readonly ILogger<ApprovalService> _logger;
 
     public ApprovalService(
@@ -20,12 +21,14 @@ public class ApprovalService : IApprovalService
         IWorkflowHost workflowHost,
         INotificationService notificationService,
         IAuditLogService auditLogService,
+        IDelegationService delegationService,
         ILogger<ApprovalService> logger)
     {
         _context = context;
         _workflowHost = workflowHost;
         _notificationService = notificationService;
         _auditLogService = auditLogService;
+        _delegationService = delegationService;
         _logger = logger;
     }
 
@@ -37,33 +40,45 @@ public class ApprovalService : IApprovalService
             return new List<PurchaseRequest>();
         }
 
+        var activeGrantors = await _delegationService.GetActiveGrantorsAsync(approverId);
+        var grantorRoles = activeGrantors
+            .Select(d => d.Grantor?.Role)
+            .Where(r => r.HasValue)
+            .Select(r => r.Value)
+            .ToList();
+
+        var allRoles = new List<UserRole> { approver.Role };
+        allRoles.AddRange(grantorRoles);
+        allRoles = allRoles.Distinct().ToList();
+
         var query = _context.PurchaseRequests
             .Include(r => r.Applicant)
             .AsQueryable();
 
-        switch (approver.Role)
+        var statusConditions = new List<(RequestStatus Status, int Level)>();
+
+        foreach (var role in allRoles)
         {
-            case UserRole.Manager:
-                query = query.Where(r =>
-                    r.Status == RequestStatus.Pending &&
-                    r.CurrentApprovalLevel == 1);
-                break;
-
-            case UserRole.Finance:
-                query = query.Where(r =>
-                    r.Status == RequestStatus.ManagerApproved &&
-                    r.CurrentApprovalLevel == 2);
-                break;
-
-            case UserRole.Director:
-                query = query.Where(r =>
-                    r.Status == RequestStatus.FinanceApproved &&
-                    r.CurrentApprovalLevel == 3);
-                break;
-
-            default:
-                return new List<PurchaseRequest>();
+            switch (role)
+            {
+                case UserRole.Manager:
+                    statusConditions.Add((RequestStatus.Pending, 1));
+                    break;
+                case UserRole.Finance:
+                    statusConditions.Add((RequestStatus.ManagerApproved, 2));
+                    break;
+                case UserRole.Director:
+                    statusConditions.Add((RequestStatus.FinanceApproved, 3));
+                    break;
+            }
         }
+
+        if (!statusConditions.Any())
+        {
+            return new List<PurchaseRequest>();
+        }
+
+        query = query.Where(r => statusConditions.Any(sc => r.Status == sc.Status && r.CurrentApprovalLevel == sc.Level));
 
         return await query.OrderByDescending(r => r.CreatedAt).ToListAsync();
     }
@@ -78,7 +93,8 @@ public class ApprovalService : IApprovalService
             return false;
         }
 
-        if (!CanApprove(request, approver))
+        var (canApprove, originalApproverId) = await CanApproveWithDelegation(request, approver);
+        if (!canApprove)
         {
             await _auditLogService.LogAsync(
                 action: "Approval.Approve",
@@ -97,6 +113,7 @@ public class ApprovalService : IApprovalService
             Id = Guid.NewGuid(),
             RequestId = requestId,
             ApproverId = approverId,
+            OriginalApproverId = originalApproverId,
             Action = ApprovalAction.Approve,
             Comment = comment?.Trim() ?? string.Empty,
             ApprovalLevel = request.CurrentApprovalLevel,
@@ -155,7 +172,8 @@ public class ApprovalService : IApprovalService
             return false;
         }
 
-        if (!CanApprove(request, approver))
+        var (canApprove, originalApproverId) = await CanApproveWithDelegation(request, approver);
+        if (!canApprove)
         {
             await _auditLogService.LogAsync(
                 action: "Approval.Reject",
@@ -174,6 +192,7 @@ public class ApprovalService : IApprovalService
             Id = Guid.NewGuid(),
             RequestId = requestId,
             ApproverId = approverId,
+            OriginalApproverId = originalApproverId,
             Action = ApprovalAction.Reject,
             Comment = comment?.Trim() ?? string.Empty,
             ApprovalLevel = request.CurrentApprovalLevel,
@@ -225,7 +244,8 @@ public class ApprovalService : IApprovalService
             return false;
         }
 
-        if (!CanApprove(request, approver))
+        var (canApprove, originalApproverId) = await CanApproveWithDelegation(request, approver);
+        if (!canApprove)
         {
             await _auditLogService.LogAsync(
                 action: "Approval.Return",
@@ -244,6 +264,7 @@ public class ApprovalService : IApprovalService
             Id = Guid.NewGuid(),
             RequestId = requestId,
             ApproverId = approverId,
+            OriginalApproverId = originalApproverId,
             Action = ApprovalAction.Return,
             Comment = comment?.Trim() ?? string.Empty,
             ApprovalLevel = request.CurrentApprovalLevel,
@@ -316,12 +337,45 @@ public class ApprovalService : IApprovalService
 
         return await _context.ApprovalRecords
             .Include(ar => ar.Approver)
+            .Include(ar => ar.OriginalApprover)
             .Where(ar => ar.RequestId == requestId)
             .OrderBy(ar => ar.CreatedAt)
             .ToListAsync();
     }
 
-    private static bool CanApprove(PurchaseRequest request, User approver)
+    /// <summary>
+    /// 检查用户是否有权限审批（包含委托权限）
+    /// </summary>
+    /// <param name="request">采购申请</param>
+    /// <param name="approver">审批人</param>
+    /// <returns>元组：是否可以审批，原审批人ID（如果是委托）</returns>
+    private async Task<(bool CanApprove, Guid? OriginalApproverId)> CanApproveWithDelegation(PurchaseRequest request, User approver)
+    {
+        if (CanDirectApprove(request, approver))
+        {
+            return (true, null);
+        }
+
+        var activeGrantors = await _delegationService.GetActiveGrantorsAsync(approver.Id);
+        foreach (var delegation in activeGrantors)
+        {
+            if (delegation.Grantor == null) continue;
+            if (CanDirectApprove(request, delegation.Grantor))
+            {
+                return (true, delegation.GrantorId);
+            }
+        }
+
+        return (false, null);
+    }
+
+    /// <summary>
+    /// 检查用户是否有直接审批权限（不包含委托）
+    /// </summary>
+    /// <param name="request">采购申请</param>
+    /// <param name="approver">审批人</param>
+    /// <returns>是否可以直接审批</returns>
+    private static bool CanDirectApprove(PurchaseRequest request, User approver)
     {
         return (approver.Role == UserRole.Manager && request.Status == RequestStatus.Pending && request.CurrentApprovalLevel == 1) ||
                (approver.Role == UserRole.Finance && request.Status == RequestStatus.ManagerApproved && request.CurrentApprovalLevel == 2) ||

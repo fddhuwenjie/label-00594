@@ -35,4 +35,6 @@ public class User
     public virtual ICollection<PurchaseRequest> PurchaseRequests { get; set; } = new List<PurchaseRequest>();
     public virtual ICollection<ApprovalRecord> ApprovalRecords { get; set; } = new List<ApprovalRecord>();
     public virtual ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+    public virtual ICollection<Delegation> GrantedDelegations { get; set; } = new List<Delegation>();
+    public virtual ICollection<Delegation> ReceivedDelegations { get; set; } = new List<Delegation>();
 }

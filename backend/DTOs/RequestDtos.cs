@@ -106,3 +106,56 @@ public class LoginDto : IValidatableObject
         }
     }
 }
+
+public class CreateDelegationDto : IValidatableObject
+{
+    [Required(ErrorMessage = "被委托人不能为空")]
+    public Guid TrusteeId { get; set; }
+
+    [Required(ErrorMessage = "委托开始日期不能为空")]
+    public DateTime StartDate { get; set; }
+
+    [Required(ErrorMessage = "委托结束日期不能为空")]
+    public DateTime EndDate { get; set; }
+
+    [StringLength(500, ErrorMessage = "委托原因不能超过 500 字")]
+    public string? Reason { get; set; }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (StartDate >= EndDate)
+        {
+            yield return new ValidationResult("委托开始日期必须早于结束日期", new[] { nameof(StartDate) });
+        }
+
+        if (StartDate.Date < DateTime.Now.Date)
+        {
+            yield return new ValidationResult("委托开始日期不能早于今天", new[] { nameof(StartDate) });
+        }
+    }
+}
+
+public class UpdateDelegationDto : IValidatableObject
+{
+    [Required(ErrorMessage = "被委托人不能为空")]
+    public Guid TrusteeId { get; set; }
+
+    [Required(ErrorMessage = "委托开始日期不能为空")]
+    public DateTime StartDate { get; set; }
+
+    [Required(ErrorMessage = "委托结束日期不能为空")]
+    public DateTime EndDate { get; set; }
+
+    [StringLength(500, ErrorMessage = "委托原因不能超过 500 字")]
+    public string? Reason { get; set; }
+
+    public bool IsActive { get; set; } = true;
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (StartDate >= EndDate)
+        {
+            yield return new ValidationResult("委托开始日期必须早于结束日期", new[] { nameof(StartDate) });
+        }
+    }
+}

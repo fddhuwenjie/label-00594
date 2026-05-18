@@ -14,6 +14,7 @@ public class AppDbContext : DbContext
     public DbSet<ApprovalRecord> ApprovalRecords => Set<ApprovalRecord>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<Delegation> Delegations => Set<Delegation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -23,6 +24,16 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<User>(entity =>
         {
             entity.HasIndex(e => e.Username).IsUnique();
+
+            entity.HasMany(u => u.GrantedDelegations)
+                .WithOne(d => d.Grantor)
+                .HasForeignKey(d => d.GrantorId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasMany(u => u.ReceivedDelegations)
+                .WithOne(d => d.Trustee)
+                .HasForeignKey(d => d.TrusteeId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         // PurchaseRequest
@@ -41,6 +52,12 @@ public class AppDbContext : DbContext
         {
             entity.HasIndex(e => e.RequestId);
             entity.HasIndex(e => e.ApproverId);
+            entity.HasIndex(e => e.OriginalApproverId);
+
+            entity.HasOne(ar => ar.OriginalApprover)
+                .WithMany()
+                .HasForeignKey(ar => ar.OriginalApproverId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         // Notification
@@ -56,6 +73,15 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => e.ActorId);
             entity.HasIndex(e => e.Action);
             entity.HasIndex(e => e.CorrelationId);
+        });
+
+        // Delegation
+        modelBuilder.Entity<Delegation>(entity =>
+        {
+            entity.HasIndex(e => e.GrantorId);
+            entity.HasIndex(e => e.TrusteeId);
+            entity.HasIndex(e => new { e.GrantorId, e.StartDate, e.EndDate });
+            entity.HasIndex(e => e.IsActive);
         });
     }
 }
