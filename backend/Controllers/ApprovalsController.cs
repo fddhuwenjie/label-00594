@@ -136,6 +136,8 @@ public class ApprovalsController : ControllerBase
                 id = r.Id,
                 approverId = r.ApproverId,
                 approverName = r.Approver?.DisplayName,
+                actualOperatorId = r.ActualOperatorId,
+                actualOperatorName = r.ActualOperator?.DisplayName,
                 action = r.Action.ToString(),
                 actionValue = (int)r.Action,
                 comment = r.Comment,

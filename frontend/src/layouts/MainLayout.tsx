@@ -9,6 +9,7 @@ import {
   UserOutlined,
   LogoutOutlined,
   TeamOutlined,
+  SwapOutlined,
 } from '@ant-design/icons'
 import { useStore } from '../store/useStore'
 import { notificationsApi } from '../api'
@@ -61,8 +62,13 @@ export default function MainLayout() {
       key: '/approvals',
       icon: <AuditOutlined />,
       label: '审批工作台',
-      // 只有审批角色可见
       hidden: user?.roleValue === UserRole.Employee,
+    },
+    {
+      key: '/delegations',
+      icon: <SwapOutlined />,
+      label: '审批委托',
+      hidden: user?.roleValue === UserRole.Employee || user?.roleValue === UserRole.Admin,
     },
     {
       key: '/notifications',
