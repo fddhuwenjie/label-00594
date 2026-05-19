@@ -14,6 +14,7 @@ public class AppDbContext : DbContext
     public DbSet<ApprovalRecord> ApprovalRecords => Set<ApprovalRecord>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<Delegation> Delegations => Set<Delegation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -41,6 +42,7 @@ public class AppDbContext : DbContext
         {
             entity.HasIndex(e => e.RequestId);
             entity.HasIndex(e => e.ApproverId);
+            entity.HasIndex(e => e.OperatorId);
         });
 
         // Notification
@@ -56,6 +58,17 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => e.ActorId);
             entity.HasIndex(e => e.Action);
             entity.HasIndex(e => e.CorrelationId);
+        });
+
+        // Delegation
+        modelBuilder.Entity<Delegation>(entity =>
+        {
+            entity.HasIndex(e => e.DelegatorId);
+            entity.HasIndex(e => e.DelegateId);
+            entity.HasIndex(e => e.StartDate);
+            entity.HasIndex(e => e.EndDate);
+            entity.HasIndex(e => e.IsRevoked);
+            entity.HasIndex(e => new { e.DelegatorId, e.IsRevoked, e.StartDate, e.EndDate });
         });
     }
 }
