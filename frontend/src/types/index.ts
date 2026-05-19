@@ -115,11 +115,37 @@ export interface ApprovalRecord {
   id: string
   approverId: string
   approverName: string
+  operatorId: string
+  operatorName: string
+  isDelegated: boolean
   action: string
   actionValue: ApprovalAction
   comment: string
   approvalLevel: number
   createdAt: string
+}
+
+// 审批委托
+export interface Delegation {
+  id: string
+  delegatorId: string
+  delegatorName: string
+  delegateId: string
+  delegateName: string
+  startDate: string
+  endDate: string
+  remark?: string
+  createdAt: string
+  isRevoked: boolean
+  revokedAt?: string
+}
+
+// 创建委托 DTO
+export interface CreateDelegationDto {
+  delegateId: string
+  startDate: string
+  endDate: string
+  remark?: string
 }
 
 // 通知

@@ -6,6 +6,7 @@ import DashboardPage from './pages/DashboardPage'
 import RequestListPage from './pages/RequestListPage'
 import RequestDetailPage from './pages/RequestDetailPage'
 import ApprovalPage from './pages/ApprovalPage'
+import DelegationPage from './pages/DelegationPage'
 import NotificationPage from './pages/NotificationPage'
 import UserManagePage from './pages/UserManagePage'
 
@@ -31,6 +32,7 @@ function App() {
         <Route path="requests" element={<RequestListPage />} />
         <Route path="requests/:id" element={<RequestDetailPage />} />
         <Route path="approvals" element={<ApprovalPage />} />
+        <Route path="delegations" element={<DelegationPage />} />
         <Route path="notifications" element={<NotificationPage />} />
         <Route path="users" element={<UserManagePage />} />
       </Route>

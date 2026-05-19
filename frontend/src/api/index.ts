@@ -6,6 +6,8 @@ import type {
   DashboardData,
   CreateRequestDto,
   UpdateRequestDto,
+  Delegation,
+  CreateDelegationDto,
 } from '../types'
 
 interface LoginResult extends User {
@@ -90,6 +92,16 @@ export const notificationsApi = {
 
 export const statisticsApi = {
   getDashboard: () => api.get<DashboardData>('/statistics/dashboard').then((res) => res.data),
+}
+
+export const delegationsApi = {
+  create: (dto: CreateDelegationDto) => api.post('/delegations', dto).then((res) => res.data),
+  revoke: (id: string) => api.post(`/delegations/${id}/revoke`).then((res) => res.data),
+  getAsDelegator: () => api.get<Delegation[]>('/delegations/as-delegator').then((res) => res.data),
+  getAsDelegate: () => api.get<Delegation[]>('/delegations/as-delegate').then((res) => res.data),
+  getActive: () => api.get<Delegation | null>('/delegations/active').then((res) => res.data),
+  getAll: () => api.get<Delegation[]>('/delegations').then((res) => res.data),
+  getAvailableDelegates: () => api.get<User[]>('/delegations/available-delegates').then((res) => res.data),
 }
 
 export default api

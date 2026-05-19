@@ -13,6 +13,7 @@ public class ApprovalService : IApprovalService
     private readonly IWorkflowHost _workflowHost;
     private readonly INotificationService _notificationService;
     private readonly IAuditLogService _auditLogService;
+    private readonly IDelegationService _delegationService;
     private readonly ILogger<ApprovalService> _logger;
 
     public ApprovalService(
@@ -20,12 +21,14 @@ public class ApprovalService : IApprovalService
         IWorkflowHost workflowHost,
         INotificationService notificationService,
         IAuditLogService auditLogService,
+        IDelegationService delegationService,
         ILogger<ApprovalService> logger)
     {
         _context = context;
         _workflowHost = workflowHost;
         _notificationService = notificationService;
         _auditLogService = auditLogService;
+        _delegationService = delegationService;
         _logger = logger;
     }
 
@@ -78,6 +81,7 @@ public class ApprovalService : IApprovalService
             return false;
         }
 
+        var authority = await _delegationService.CheckApprovalAuthorityAsync(approverId, approver.Role);
         if (!CanApprove(request, approver))
         {
             await _auditLogService.LogAsync(
@@ -96,7 +100,9 @@ public class ApprovalService : IApprovalService
         {
             Id = Guid.NewGuid(),
             RequestId = requestId,
-            ApproverId = approverId,
+            ApproverId = authority.IsDelegated ? authority.ApproverId : approverId,
+            OperatorId = approverId,
+            IsDelegated = authority.IsDelegated,
             Action = ApprovalAction.Approve,
             Comment = comment?.Trim() ?? string.Empty,
             ApprovalLevel = request.CurrentApprovalLevel,
@@ -130,17 +136,18 @@ public class ApprovalService : IApprovalService
             resourceType: "PurchaseRequest",
             resourceId: requestId.ToString(),
             result: "Success",
-            details: $"nextStatus={nextStatus};nextLevel={nextLevel}",
+            details: $"nextStatus={nextStatus};nextLevel={nextLevel};isDelegated={authority.IsDelegated}",
             actorId: approverId,
             actorUsername: approver.Username,
             actorRole: approver.Role.ToString());
 
         _logger.LogInformation(
-            "审批通过: requestId={RequestId}, approverId={ApproverId}, nextStatus={NextStatus}, nextLevel={NextLevel}",
+            "审批通过: requestId={RequestId}, approverId={ApproverId}, nextStatus={NextStatus}, nextLevel={NextLevel}, isDelegated={IsDelegated}",
             requestId,
             approverId,
             nextStatus,
-            nextLevel);
+            nextLevel,
+            authority.IsDelegated);
 
         return true;
     }
@@ -155,6 +162,7 @@ public class ApprovalService : IApprovalService
             return false;
         }
 
+        var authority = await _delegationService.CheckApprovalAuthorityAsync(approverId, approver.Role);
         if (!CanApprove(request, approver))
         {
             await _auditLogService.LogAsync(
@@ -173,7 +181,9 @@ public class ApprovalService : IApprovalService
         {
             Id = Guid.NewGuid(),
             RequestId = requestId,
-            ApproverId = approverId,
+            ApproverId = authority.IsDelegated ? authority.ApproverId : approverId,
+            OperatorId = approverId,
+            IsDelegated = authority.IsDelegated,
             Action = ApprovalAction.Reject,
             Comment = comment?.Trim() ?? string.Empty,
             ApprovalLevel = request.CurrentApprovalLevel,
@@ -202,15 +212,16 @@ public class ApprovalService : IApprovalService
             resourceType: "PurchaseRequest",
             resourceId: requestId.ToString(),
             result: "Success",
-            details: $"status={request.Status}",
+            details: $"status={request.Status};isDelegated={authority.IsDelegated}",
             actorId: approverId,
             actorUsername: approver.Username,
             actorRole: approver.Role.ToString());
 
         _logger.LogInformation(
-            "审批拒绝: requestId={RequestId}, approverId={ApproverId}",
+            "审批拒绝: requestId={RequestId}, approverId={ApproverId}, isDelegated={IsDelegated}",
             requestId,
-            approverId);
+            approverId,
+            authority.IsDelegated);
 
         return true;
     }
@@ -225,6 +236,7 @@ public class ApprovalService : IApprovalService
             return false;
         }
 
+        var authority = await _delegationService.CheckApprovalAuthorityAsync(approverId, approver.Role);
         if (!CanApprove(request, approver))
         {
             await _auditLogService.LogAsync(
@@ -243,7 +255,9 @@ public class ApprovalService : IApprovalService
         {
             Id = Guid.NewGuid(),
             RequestId = requestId,
-            ApproverId = approverId,
+            ApproverId = authority.IsDelegated ? authority.ApproverId : approverId,
+            OperatorId = approverId,
+            IsDelegated = authority.IsDelegated,
             Action = ApprovalAction.Return,
             Comment = comment?.Trim() ?? string.Empty,
             ApprovalLevel = request.CurrentApprovalLevel,
@@ -273,15 +287,16 @@ public class ApprovalService : IApprovalService
             resourceType: "PurchaseRequest",
             resourceId: requestId.ToString(),
             result: "Success",
-            details: $"status={request.Status}",
+            details: $"status={request.Status};isDelegated={authority.IsDelegated}",
             actorId: approverId,
             actorUsername: approver.Username,
             actorRole: approver.Role.ToString());
 
         _logger.LogInformation(
-            "审批退回: requestId={RequestId}, approverId={ApproverId}",
+            "审批退回: requestId={RequestId}, approverId={ApproverId}, isDelegated={IsDelegated}",
             requestId,
-            approverId);
+            approverId,
+            authority.IsDelegated);
 
         return true;
     }
@@ -316,6 +331,7 @@ public class ApprovalService : IApprovalService
 
         return await _context.ApprovalRecords
             .Include(ar => ar.Approver)
+            .Include(ar => ar.Operator)
             .Where(ar => ar.RequestId == requestId)
             .OrderBy(ar => ar.CreatedAt)
             .ToListAsync();
